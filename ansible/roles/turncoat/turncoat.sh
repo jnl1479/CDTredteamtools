@@ -3,11 +3,7 @@
 
 echo "[*] Initializing Phantom Network setup..."
 
-# Automatically find the active physical interface
-PHYSICAL_IFACE=$(ip route | grep default | awk '{print $5}' | head -n 1)
-if [ -z "$PHYSICAL_IFACE" ]; then
-    PHYSICAL_IFACE="ens3" # Fallback just in case
-fi
+PHYSICAL_IFACE="ens3"
 
 NAMESPACE="phantom01"
 VIRTUAL_IFACE="macvlan0"
@@ -42,7 +38,7 @@ ip netns exec $NAMESPACE ip link set dev $VIRTUAL_IFACE up
 ip netns exec $NAMESPACE ip link set dev lo up
 
 # Launch a decoy service INSIDE the hidden namespace
-# (This spawns a netcat listener on port 2222 that the host OS cannot see)
-nohup ip netns exec $NAMESPACE nc -l -p 2222 > /dev/null 2>&1 &
+# (This spawns a netcat listener on port 22 that the host OS cannot see)
+nohup ip netns exec $NAMESPACE nc -l -p 22 > /dev/null 2>&1 &
 
 echo "[+] Phantom network deployed successfully. Hiding in the shadows."
