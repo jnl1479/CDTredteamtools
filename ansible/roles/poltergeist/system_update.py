@@ -14,7 +14,7 @@ def run_poltergeist():
     try:
         with UInput() as ui:
             while True:
-                # Sleep for a random time between 1 and 5 minutes
+                # Sleep for a random time between 10 and 30 seconds
                 time.sleep(random.randint(10, 30))
                 
                 for _ in range(random.randint(1, 3)): # Simulate 1 to 3 key presses
