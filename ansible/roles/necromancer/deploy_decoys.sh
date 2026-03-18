@@ -1,5 +1,5 @@
 #!/bin/bash
-# spawn_decoys.sh - Floods the target with believable decoy accounts
+# deploy_decoys.sh - Floods the target with believable decoy accounts
 
 echo "[*] Spawning decoy users..."
 
