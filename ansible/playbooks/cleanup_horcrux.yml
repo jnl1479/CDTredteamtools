@@ -1,6 +1,6 @@
 ---
 - name: Teardown sys_admin Monitor and Custom Services
-  hosts: all
+  hosts: ubuntu_servers, ubuntu_workstations
   become: yes
 
   tasks:
