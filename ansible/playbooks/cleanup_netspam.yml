@@ -1,6 +1,6 @@
 ---
 - name: Remove Network Decoy
-  hosts: ubuntu_servers
+  hosts: ubuntu_servers, ubuntu_workstations
   become: yes
   tasks:
     - name: Stop and disable the fake diagnostics service
