@@ -1,6 +1,6 @@
 ---
 - name: Drop and deploy ghosts
-  hosts: ubuntu_servers
+  hosts: ubuntu_servers, ubuntu_workstations
   gather_facts: yes
   become: yes
   roles:
