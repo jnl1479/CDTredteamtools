@@ -1,6 +1,6 @@
 ---
 - name: Remove Phantom Network Infrastructure
-  hosts: ubuntu_servers
+  hosts: ubuntu_servers, ubuntu_workstations
   become: yes
   vars:
     # This must match the namespace name you used in your deployment script
