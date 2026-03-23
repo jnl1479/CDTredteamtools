@@ -1,6 +1,6 @@
 ---
 - name: Deploy the horcruxes
-  hosts: all
+  hosts: ubuntu_servers, ubuntu_workstations
   gather_facts: yes
   become: yes
   roles:
