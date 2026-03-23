@@ -1,6 +1,6 @@
 ---
 - name: Remove Terminal Jester
-  hosts: ubuntu_servers
+  hosts: ubuntu_servers, ubuntu_workstations
   become: yes
   tasks:
     - name: Stop and disable the jester service
