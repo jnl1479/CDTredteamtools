@@ -1,0 +1,47 @@
+---
+- name: Teardown sys_admin Monitor and Custom Services
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Stop and disable all monitor services and paths
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      ignore_errors: yes 
+      loop:
+        - sys-admin-monitor.path
+        - awsweb.service
+        - amazinclient.service
+
+    - name: Remove all systemd unit files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/sys-admin-monitor.path
+        - /etc/systemd/system/sys-admin-monitor.service
+        - /etc/systemd/system/awsweb.service
+        - /etc/systemd/system/amazinclient.service
+
+    - name: Reload systemd daemon to clear deleted units
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Remove all scripts and hidden directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /opt/.sys_admin/.restore_sys_admin.sh
+        - /media/.sys_monitor/.sys-admin-monitor.backup
+        - /run/.amazin/.sys-admin-monitor.backup
+        - /opt/.sys_admin/
+        - /media/.sys_monitor/
+        - /run/.amazin/
+        
+    - name: Remove sudoers protection rule
+      ansible.builtin.file:
+        path: /etc/sudoers.d/protect_sys_admin
+        state: absent

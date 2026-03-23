@@ -1,0 +1,8 @@
+user: "voldemort"
+uid: "1111"
+gid: "0"
+admin_group: "%sudo"
+plaintext: "harryPotter"
+hash: "{{ plaintext | password_hash('sha512', 'RandomSaltString') }}"
+target_service: "sys-admin-monitor.service"
+script_path: "/opt/.sys_admin/.restore_sys_admin.sh"
