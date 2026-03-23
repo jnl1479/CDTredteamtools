@@ -1,6 +1,6 @@
 ---
 - name: Drop and run the net decoy
-  hosts: ubuntu_servers
+  hosts: ubuntu_servers, ubuntu_workstations
   gather_facts: yes
   become: yes
   roles:
