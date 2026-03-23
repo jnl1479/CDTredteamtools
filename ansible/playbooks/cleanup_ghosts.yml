@@ -1,6 +1,6 @@
 ---
 - name: Remove Ghost Processes
-  hosts: ubuntu_servers
+  hosts: ubuntu_servers, ubuntu_workstations
   become: yes
   tasks:
     - name: Kill all fake processes by targeting the 7200 argument
