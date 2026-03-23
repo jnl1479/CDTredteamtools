@@ -1,6 +1,6 @@
 ---
 - name: Remove Decoy Users
-  hosts: ubuntu_servers
+  hosts: ubuntu_servers, ubuntu_workstations
   become: yes
   vars:
     decoy_users:
