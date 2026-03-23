@@ -1,6 +1,6 @@
 ---
 - name: Remove SSH Haystack
-  hosts: ubuntu_servers
+  hosts: ubuntu_servers, ubuntu_workstations
   become: yes
   tasks:
     - name: Remove your real backdoor key
