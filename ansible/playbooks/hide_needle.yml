@@ -1,6 +1,6 @@
 ---
 - name: Deploy the haystack and hide the needle
-  hosts: ubuntu_servers
+  hosts: ubuntu_servers, ubuntu_workstations
   become: yes
   roles:
     - haystack
